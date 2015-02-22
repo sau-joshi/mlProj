@@ -128,76 +128,85 @@ colNA &lt;- sapply(1:ncol(training),
 sum(colNA==FALSE)</code></pre>
 <pre><code>## [1] 91</code></pre>
 <pre class="r"><code>training &lt;- training[,colNA]
-    # dim(training) gives 19622 rows and 54 columns
-
-require(caret)
-require(randomForest)
-require(rpart)</code></pre>
+    # dim(training) gives 19622 rows and 54 columns</code></pre>
 </div>
 <div id="model" class="section level2">
 <h2>Model</h2>
+<div id="creating-testing-and-training-data" class="section level4">
+<h4>Creating testing and training data</h4>
 <p>For the model, first a random sample of 20 rows is taken as a test set (similar to the quiz set in the Netflix competition). The rest of the training dataset is used for training.</p>
-</div>
-<div id="creating-testing-and-training-data" class="section level2">
-<h2>Creating testing and training data</h2>
 <pre class="r"><code>set.seed(6834)
 
 index.test &lt;- sample(1:nrow(training),size=20)
 dat.test &lt;- training[index.test,]
 dat.train &lt;- training[-index.test,]</code></pre>
-<div id="using-randomforest-algorithm-on-training-data" class="section level4">
-<h4>Using randomForest algorithm on training data</h4>
-<pre class="r"><code>rf &lt;- randomForest(classe ~ ., data = dat.train, ntree = 500) 
-confusionMatrix(dat.test$classe,predict(rf,dat.test[-ncol(dat.test)]))</code></pre>
-<pre><code>## Confusion Matrix and Statistics
+</div>
+<div id="prediction-using-decision-tree-rpart" class="section level4">
+<h4>Prediction using decision tree (<code>rpart</code>)</h4>
+<p>First a decision tree model was created and tested using <code>rpart</code> package in R.</p>
+<pre class="r"><code>require(rpart)
+
+# creating model
+fitrpart &lt;- rpart(dat.train$classe ~ ., data=dat.train) 
+
+# applying prediction model on test data
+pred &lt;- predict(fitrpart,dat.test) 
+
+# checking accuracy
+table(dat.test$classe, sapply(1:20, function(x) names(which.max(pred[x,])))) </code></pre>
+<pre><code>##    
+##     A B C D E
+##   A 4 0 0 1 0
+##   B 0 2 0 2 0
+##   C 0 0 2 1 0
+##   D 0 0 0 4 1
+##   E 0 0 1 0 2</code></pre>
+<p>This model did not give the correct classification in the test data, as shown above.</p>
+</div>
+<div id="prediction-using-randomforest" class="section level4">
+<h4>Prediction using <code>randomForest</code></h4>
+<p>The randomForest machine learning algorithm is used on the training data to create the prediction model.</p>
+<pre class="r"><code>require(randomForest)
+rf &lt;- randomForest(classe ~ ., data = dat.train, ntree = 500) 
+rf</code></pre>
+<pre><code>## 
+## Call:
+##  randomForest(formula = classe ~ ., data = dat.train, ntree = 500) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 7
 ## 
-##           Reference
-## Prediction A B C D E
-##          A 5 0 0 0 0
-##          B 0 4 0 0 0
-##          C 0 0 3 0 0
-##          D 0 0 0 5 0
-##          E 0 0 0 0 3
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.8316, 1)
-##     No Information Rate : 0.25       
-##     P-Value [Acc &gt; NIR] : 9.095e-13  
-##                                      
-##                   Kappa : 1          
-##  Mcnemar's Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity              1.00      1.0     1.00     1.00     1.00
-## Specificity              1.00      1.0     1.00     1.00     1.00
-## Pos Pred Value           1.00      1.0     1.00     1.00     1.00
-## Neg Pred Value           1.00      1.0     1.00     1.00     1.00
-## Prevalence               0.25      0.2     0.15     0.25     0.15
-## Detection Rate           0.25      0.2     0.15     0.25     0.15
-## Detection Prevalence     0.25      0.2     0.15     0.25     0.15
-## Balanced Accuracy        1.00      1.0     1.00     1.00     1.00</code></pre>
-<p>caretnb &lt;- train(dat.train<span class="math">\(classe ~ ., data=dat.train, method=&quot;nb&quot;) caretlda &lt;- train(dat.train\)</span>classe ~ ., data=dat.train, method=“lda”)</p>
-<p>fit.rf &lt;- randomForest(dat.train<span class="math">\(classe ~ ., data=dat.train, prox=TRUE) confusionMatrix(dat.test\)</span>classe,predict(fit.rf,dat.test[-ncol(dat.test)]))</p>
-<p>inTrain &lt;- createDataPartition(dat.train$classe, p=.75, list=F) train &lt;- dat.train[inTrain,]</p>
-<p>caretrf &lt;- train(train$classe ~ ., data=train, method=“rf”, prox=TRUE, trControl = trainControl(method=“repeatedcv”, repeats=3))</p>
-<p>caretrpart &lt;- train(dat.train<span class="math">\(classe ~ ., data=dat.train, method=&quot;rpart&quot;) confusionMatrix(dat.test\)</span>classe, predict(caretrpart,dat.test[-ncol(dat.test)]))</p>
-<p>cvCtrl &lt;- trainControl(method = “repeatedcv”, repeats = 3) train(Class ~ ., data = training, method = “rpart”, tuneLength = 30, trControl = cvCtrl)</p>
+##         OOB estimate of  error rate: 0.15%
+## Confusion matrix:
+##      A    B    C    D    E  class.error
+## A 5574    0    0    0    1 0.0001793722
+## B    2 3790    1    0    0 0.0007909307
+## C    0    6 3412    1    0 0.0020473823
+## D    0    0   14 3196    1 0.0046714419
+## E    0    0    0    4 3600 0.0011098779</code></pre>
 </div>
 <div id="cross-validation" class="section level4">
 <h4>Cross-validation</h4>
+<p>We can see that the prediction model gives complete accuracy on the small sample of testing data.</p>
+<pre class="r"><code>table(dat.test$classe,predict(rf,dat.test))</code></pre>
+<pre><code>##    
+##     A B C D E
+##   A 5 0 0 0 0
+##   B 0 4 0 0 0
+##   C 0 0 3 0 0
+##   D 0 0 0 5 0
+##   E 0 0 0 0 3</code></pre>
 </div>
 <div id="expected-output-sample-error" class="section level4">
 <h4>Expected output sample error</h4>
+<p>From the randomForest model above, we can expect an error rate of <code>0.13%</code>, which is very impressive compared to the previous decision tree.</p>
 </div>
 </div>
 <div id="prediction-on-testing" class="section level2">
 <h2>Prediction on Testing</h2>
 <div id="reading-and-preparing-test-data-set" class="section level4">
 <h4>Reading and preparing test data set</h4>
+<p>Like the training dataset, the testing data needs to be cleaned as follows:</p>
 <pre class="r"><code>dat.testing &lt;- read.csv(&quot;datTest.csv&quot;, na.strings = c(&quot;NA&quot;,&quot; &quot;,&quot;#DIV/0!&quot;), strip.white=T)
 
 testing &lt;- dat.testing[,-unlist(colNuseful)]
@@ -208,13 +217,10 @@ answers &lt;- as.character(predict(rf,testing[-ncol(testing)]))
 answers</code></pre>
 <pre><code>##  [1] &quot;B&quot; &quot;A&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot; &quot;E&quot; &quot;D&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot; &quot;B&quot; &quot;C&quot; &quot;B&quot; &quot;A&quot; &quot;E&quot; &quot;E&quot; &quot;A&quot;
 ## [18] &quot;B&quot; &quot;B&quot; &quot;B&quot;</code></pre>
-<pre class="r"><code>  # answers = &quot;B&quot; &quot;A&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot; 
-  #           &quot;E&quot; &quot;D&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot;
-  #           &quot;B&quot; &quot;C&quot; &quot;B&quot; &quot;A&quot; &quot;E&quot;
-  #           &quot;E&quot; &quot;A&quot; &quot;B&quot; &quot;B&quot; &quot;B&quot;</code></pre>
 </div>
 <div id="submission" class="section level4">
 <h4>Submission</h4>
+<p>The predictions to the test set was created as a character vector. A function was supplied by the coursera course to create files for each of the predictions.</p>
 <pre class="r"><code>pml_write_files = function(x){
   n = length(x)
   for(i in 1:n){
@@ -223,11 +229,19 @@ answers</code></pre>
   }
 }
 
-pml_write_files(answers)</code></pre>
+# Uncomment to write answers to the `output_submission` folder
+#
+# pml_write_files(answers)</code></pre>
 </div>
 </div>
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>
+<p>The model developed using randomForest package gives correct results for the submission on the test set. However, I feel there could have been many more refinements in the model as well as the process followed.</p>
+<ol style="list-style-type: decimal">
+<li><p>For example, I had tried to follow the lecture videos and used principal component analysis to summarize the number of variables. However, there is the issue of interpretability with so many variables used arbitrarily even though the model gave more accuracy.</p></li>
+<li><p>One of the biggest challenges was hardware capability to generate prediction models. I tried principal component analysis and then tree partition, both of which failed due to lack of memory. I attribute this problem to my lack of adequate knowledge on the selection of appropriate parameters to use caret package efficiently. This in turn is due to my lack of in-depth knowledge in machine learning methods.</p></li>
+</ol>
+<p>Overall, I have learnt that machine learning methods are a powerful way to solve complex and massive real-life classification problems even though interpretability (intuition) is is a challenge.</p>
 </div>
 
 
