@@ -98,18 +98,15 @@ sum(colNA==FALSE)
 ```r
 training <- training[,colNA]
     # dim(training) gives 19622 rows and 54 columns
-
-require(caret)
-require(randomForest)
-require(rpart)
 ```
 
 
 ## Model
 
+#### Creating testing and training data
+
 For the model, first a random sample of 20 rows is taken as a test set (similar to the quiz set in the Netflix competition). The rest of the training dataset is used for training.
 
-## Creating testing and training data
 
 ```r
 set.seed(6834)
@@ -119,79 +116,96 @@ dat.test <- training[index.test,]
 dat.train <- training[-index.test,]
 ```
 
+#### Prediction using decision tree (`rpart`)
 
-#### Using randomForest algorithm on training data
+First a decision tree model was created and tested using `rpart` package in R.
 
 ```r
+require(rpart)
+
+# creating model
+fitrpart <- rpart(dat.train$classe ~ ., data=dat.train) 
+
+# applying prediction model on test data
+pred <- predict(fitrpart,dat.test) 
+
+# checking accuracy
+table(dat.test$classe, sapply(1:20, function(x) names(which.max(pred[x,])))) 
+```
+
+```
+##    
+##     A B C D E
+##   A 4 0 0 1 0
+##   B 0 2 0 2 0
+##   C 0 0 2 1 0
+##   D 0 0 0 4 1
+##   E 0 0 1 0 2
+```
+
+This model did not give the correct classification in the test data, as shown above.
+
+
+#### Prediction using `randomForest`
+
+The randomForest machine learning algorithm is used on the training data to create the prediction model.
+
+
+```r
+require(randomForest)
 rf <- randomForest(classe ~ ., data = dat.train, ntree = 500) 
-confusionMatrix(dat.test$classe,predict(rf,dat.test[-ncol(dat.test)]))
+rf
 ```
 
 ```
-## Confusion Matrix and Statistics
 ## 
-##           Reference
-## Prediction A B C D E
-##          A 5 0 0 0 0
-##          B 0 4 0 0 0
-##          C 0 0 3 0 0
-##          D 0 0 0 5 0
-##          E 0 0 0 0 3
+## Call:
+##  randomForest(formula = classe ~ ., data = dat.train, ntree = 500) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 7
 ## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.8316, 1)
-##     No Information Rate : 0.25       
-##     P-Value [Acc > NIR] : 9.095e-13  
-##                                      
-##                   Kappa : 1          
-##  Mcnemar's Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity              1.00      1.0     1.00     1.00     1.00
-## Specificity              1.00      1.0     1.00     1.00     1.00
-## Pos Pred Value           1.00      1.0     1.00     1.00     1.00
-## Neg Pred Value           1.00      1.0     1.00     1.00     1.00
-## Prevalence               0.25      0.2     0.15     0.25     0.15
-## Detection Rate           0.25      0.2     0.15     0.25     0.15
-## Detection Prevalence     0.25      0.2     0.15     0.25     0.15
-## Balanced Accuracy        1.00      1.0     1.00     1.00     1.00
+##         OOB estimate of  error rate: 0.15%
+## Confusion matrix:
+##      A    B    C    D    E  class.error
+## A 5574    0    0    0    1 0.0001793722
+## B    2 3790    1    0    0 0.0007909307
+## C    0    6 3412    1    0 0.0020473823
+## D    0    0   14 3196    1 0.0046714419
+## E    0    0    0    4 3600 0.0011098779
 ```
-
-caretnb <- train(dat.train$classe ~ ., data=dat.train, method="nb")
-caretlda <- train(dat.train$classe ~ ., data=dat.train, method="lda")
-
-fit.rf <- randomForest(dat.train$classe ~ ., data=dat.train, prox=TRUE)
-confusionMatrix(dat.test$classe,predict(fit.rf,dat.test[-ncol(dat.test)]))
-
-
-inTrain <- createDataPartition(dat.train$classe, p=.75, list=F)
-train <- dat.train[inTrain,]
-
-caretrf <- train(train$classe ~ ., data=train, 
-                    method="rf", prox=TRUE,
-                    trControl = trainControl(method="repeatedcv", repeats=3))
-
-caretrpart <- train(dat.train$classe ~ ., data=dat.train, method="rpart")
-confusionMatrix(dat.test$classe, predict(caretrpart,dat.test[-ncol(dat.test)]))
-
-
-cvCtrl <- trainControl(method = "repeatedcv", repeats = 3)
-train(Class ~ ., data = training, method = "rpart",
-        tuneLength = 30,
-        trControl = cvCtrl)
 
 #### Cross-validation
 
+
+We can see that the prediction model gives complete accuracy on the small sample of testing data.
+
+
+```r
+table(dat.test$classe,predict(rf,dat.test))
+```
+
+```
+##    
+##     A B C D E
+##   A 5 0 0 0 0
+##   B 0 4 0 0 0
+##   C 0 0 3 0 0
+##   D 0 0 0 5 0
+##   E 0 0 0 0 3
+```
+
+
 #### Expected output sample error
 
+From the randomForest model above, we can expect an error rate of `0.13%`, which is very impressive compared to the previous decision tree.
 
 ## Prediction on Testing
 
 #### Reading and preparing test data set
+
+Like the training dataset, the testing data needs to be cleaned as follows:
+
 
 ```r
 dat.testing <- read.csv("datTest.csv", na.strings = c("NA"," ","#DIV/0!"), strip.white=T)
@@ -213,16 +227,12 @@ answers
 ## [18] "B" "B" "B"
 ```
 
-```r
-  # answers = "B" "A" "B" "A" "A" 
-  #           "E" "D" "B" "A" "A"
-  #           "B" "C" "B" "A" "E"
-  #           "E" "A" "B" "B" "B"
-```
-
 
 
 #### Submission
+
+The predictions to the test set was created as a character vector. A function was supplied by the coursera course to create files for each of the predictions.
+
 
 ```r
 pml_write_files = function(x){
@@ -233,10 +243,17 @@ pml_write_files = function(x){
   }
 }
 
-pml_write_files(answers)
+# Uncomment to write answers to the `output_submission` folder
+#
+# pml_write_files(answers)
 ```
 
 ## Conclusion
 
+The model developed using randomForest package gives correct results for the submission on the test set. However, I feel there could have been many more refinements in the model as well as the process followed. 
 
+1. For example, I had tried to follow the lecture videos and used principal component analysis to summarize the number of variables. However, there is the issue of interpretability with so many variables used arbitrarily even though the model gave more accuracy.
 
+2. One of the biggest challenges was hardware capability to generate prediction models. I tried principal component analysis and then tree partition, both of which failed due to lack of memory. I attribute this problem to my lack of adequate knowledge on the selection of appropriate parameters to use caret package efficiently. This in turn is due to my lack of in-depth knowledge in machine learning methods.
+
+Overall, I have learnt that machine learning methods are a powerful way to solve complex and massive real-life classification problems even though interpretability (intuition) is is a challenge.
