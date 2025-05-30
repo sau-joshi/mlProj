@@ -5,4 +5,4 @@ machine learning project
 
 You can view the writeup (mlProj.md) in markdown format from within github.
 
-If you want to view as html, go to <http://wobblyworm.github.io/mlProj/mlProj.html>
+If you want to view as html, go to <http://sau-joshi.github.io/mlProj/mlProj.html>
